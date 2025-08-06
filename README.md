@@ -51,10 +51,26 @@ AMADEUS_CLIENT_SECRET=your_client_secret
 
 ### Running the Server
 
-Build and start the server:
+The server automatically detects the transport mode:
+
+**For Claude Desktop (via npx):**
+```
+npx @markesphere/amadeus-mcp-server
+```
+
+**For HTTP/SSE mode (web applications):**
 ```
 npm run build
 npm start
+```
+
+**Force specific transport modes:**
+```
+# Force stdio transport
+npx @markesphere/amadeus-mcp-server --stdio
+
+# Force HTTP transport  
+npx @markesphere/amadeus-mcp-server --http
 ```
 
 For development:

@@ -3,19 +3,128 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { server, amadeus } from './index.js';
 
 // Load environment variables
 dotenv.config();
 
+// Detect if we should use stdio transport (when called by Claude Desktop via npx)
+function shouldUseStdio(): boolean {
+  // Check if we're being called by npx or if stdio arguments are present
+  const isNpx = process.env.npm_execpath?.includes('npx') || 
+                process.argv[0]?.includes('npx') ||
+                process.env.npm_command === 'exec';
+  
+  // Check for explicit stdio flag
+  const hasStdioFlag = process.argv.includes('--stdio');
+  
+  // Check for explicit http flag
+  const hasHttpFlag = process.argv.includes('--http');
+  
+  console.error(`[DEBUG] Transport detection:`, {
+    isNpx,
+    hasStdioFlag,
+    hasHttpFlag,
+    npm_execpath: process.env.npm_execpath,
+    npm_command: process.env.npm_command,
+    argv0: process.argv[0],
+    args: process.argv.slice(2)
+  });
+  
+  // If http flag is explicitly set, use HTTP
+  if (hasHttpFlag) {
+    console.error('[DEBUG] Using HTTP transport (explicit flag)');
+    return false;
+  }
+  
+  // If stdio flag is explicitly set, use stdio
+  if (hasStdioFlag) {
+    console.error('[DEBUG] Using stdio transport (explicit flag)');
+    return true;
+  }
+  
+  // If called via npx (like Claude Desktop does), use stdio
+  if (isNpx) {
+    console.error('[DEBUG] Using stdio transport (detected npx)');
+    return true;
+  }
+  
+  // Default to HTTP for direct node calls
+  console.error('[DEBUG] Using HTTP transport (default)');
+  return false;
+}
+
 // Start the server
 async function main() {
+  console.error('[DEBUG] Starting main function...');
+  
   // Check for Amadeus credentials
   if (!amadeus) {
     console.error('Error: Amadeus API client could not be initialized. Check your environment variables.');
     process.exit(1);
   }
 
+  const useStdio = shouldUseStdio();
+  
+  if (useStdio) {
+    // Use stdio transport for Claude Desktop
+    console.error('[DEBUG] Starting Amadeus MCP Server with stdio transport...');
+    
+    // IMPORTANT: Import modules to register tools, resources, and prompts
+    console.error('[DEBUG] Importing modules to register MCP methods...');
+    await Promise.all([
+      import('./tools.js'),
+      import('./resources.js'),
+      import('./prompt.js')
+    ]);
+    console.error('[DEBUG] All modules imported successfully');
+    
+    const transport = new StdioServerTransport();
+    
+    // Add connection event handlers
+    transport.onclose = () => {
+      console.error('[DEBUG] Transport closed');
+    };
+    
+    transport.onerror = (error) => {
+      console.error('[DEBUG] Transport error:', error);
+    };
+    
+    await server.connect(transport);
+    console.error('[DEBUG] Amadeus MCP Server connected via stdio transport');
+    
+    // Keep the process alive
+    console.error('[DEBUG] Keeping process alive...');
+    
+    // Handle process signals gracefully
+    process.on('SIGINT', () => {
+      console.error('[DEBUG] Received SIGINT, shutting down gracefully...');
+      process.exit(0);
+    });
+    
+    process.on('SIGTERM', () => {
+      console.error('[DEBUG] Received SIGTERM, shutting down gracefully...');
+      process.exit(0);
+    });
+    
+    // Add an error handler for uncaught exceptions
+    process.on('uncaughtException', (error) => {
+      console.error('[DEBUG] Uncaught exception:', error);
+    });
+    
+    process.on('unhandledRejection', (reason, promise) => {
+      console.error('[DEBUG] Unhandled rejection at:', promise, 'reason:', reason);
+    });
+    
+  } else {
+    // Use HTTP/SSE transport for web applications
+    console.error('[DEBUG] Starting HTTP server...');
+    await startHttpServer();
+  }
+}
+
+async function startHttpServer() {
   // Set up Express app
   const app = express();
   
@@ -88,7 +197,7 @@ async function main() {
     res.json({ 
       status: 'ok',
       connections: activeTransports.size,
-      version: process.env.npm_package_version || '1.0.0'
+      version: process.env.npm_package_version || '1.1.0'
     });
   });
 
@@ -101,6 +210,6 @@ async function main() {
 }
 
 main().catch((error: unknown) => {
-  console.error('Fatal error:', error);
+  console.error('[DEBUG] Fatal error in main:', error);
   process.exit(1);
 });

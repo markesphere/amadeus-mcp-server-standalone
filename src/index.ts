@@ -27,7 +27,7 @@ if (process.env.AMADEUS_CLIENT_ID && process.env.AMADEUS_CLIENT_SECRET) {
 // Create MCP server - FIXED VERSION
 export const server = new McpServer({
   name: 'amadeus-mcp-server',
-  version: '1.0.0'
+  version: '1.1.3'
 });
 
 // Create a cache instance
@@ -39,16 +39,18 @@ export const cache = new NodeCache({
 }) as TypedCache;
 
 /**
- * Wrapper for Amadeus API calls with caching
+ * Wrapper for Amadeus API calls with caching and timeout protection
  * @param cacheKey - Key for caching
  * @param ttl - Time to live in seconds
  * @param apiCall - Function that returns a promise with the API call
+ * @param timeoutMs - Timeout in milliseconds (default 25000ms)
  * @returns Promise with API response
  */
 export async function cachedApiCall<T>(
   cacheKey: string,
   ttl: number,
   apiCall: () => Promise<T>,
+  timeoutMs: number = 25000,
 ): Promise<T> {
   // Check if we have a cached response
   const cachedResponse = cache.get<T>(cacheKey);
@@ -57,13 +59,23 @@ export async function cachedApiCall<T>(
     return cachedResponse;
   }
 
-  // If not cached, make the API call
+  // If not cached, make the API call with timeout protection
   console.error(`Cache miss for ${cacheKey}, calling API...`);
   try {
-    const response = await apiCall();
+    // Create timeout promise
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error(`API call for ${cacheKey} timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
+    });
+
+    // Race between API call and timeout
+    const response = await Promise.race([apiCall(), timeoutPromise]);
 
     // Cache the response with the specified TTL
     cache.set<T>(cacheKey, response, ttl);
+
+    return response;
 
     return response;
   } catch (error: unknown) {

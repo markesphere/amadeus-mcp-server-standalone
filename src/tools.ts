@@ -2,6 +2,56 @@ import { z } from 'zod';
 // Tool to search for flights
 import { amadeus, cachedApiCall, server } from './index.js';
 
+// Timeout wrapper for API calls
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number = 30000,
+  operation: string = 'API call'
+): Promise<T> {
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => {
+      reject(new Error(`${operation} timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('timed out')) {
+      console.error(`Timeout error in ${operation}:`, error);
+    }
+    throw error;
+  }
+}
+
+// Enhanced API call wrapper with retry and timeout
+async function makeApiCallWithRetry<T>(
+  apiCallFn: () => Promise<T>,
+  operation: string,
+  retries: number = 2,
+  delay: number = 1000,
+  timeoutMs: number = 30000
+): Promise<T> {
+  try {
+    return await withTimeout(apiCallFn(), timeoutMs, operation);
+  } catch (error: any) {
+    // Check if it's a rate limiting error (HTTP 429) or network timeout
+    const isRetryableError = 
+      (error.response && error.response.statusCode === 429) ||
+      (error.message && error.message.includes('timeout')) ||
+      (error.code && ['ECONNRESET', 'ENOTFOUND', 'ETIMEDOUT'].includes(error.code));
+
+    if (isRetryableError && retries > 0) {
+      console.log(`${operation} failed, retrying after ${delay}ms. Retries left: ${retries}`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return makeApiCallWithRetry(apiCallFn, operation, retries - 1, delay * 2, timeoutMs);
+    }
+    
+    // If not retryable or out of retries, rethrow
+    throw error;
+  }
+}
+
 // Define interfaces for Amadeus API responses and parameters
 interface FlightParams {
   [key: string]: string | number | boolean | undefined;
@@ -250,9 +300,13 @@ server.tool(
         }
       }
 
-      const response = (await amadeus.shopping.flightOffersSearch.get(
-        params,
-      )) as FlightOfferResponse;
+      const response = await makeApiCallWithRetry(
+        () => amadeus.shopping.flightOffersSearch.get(params),
+        'Flight search',
+        2, // retries
+        1000, // initial delay
+        25000 // timeout (25 seconds to stay under MCP 30s limit)
+      ) as FlightOfferResponse;
 
       const formattedResults = response.data.map((offer: FlightOffer) => {
         const {
@@ -330,13 +384,25 @@ server.tool(
       };
     } catch (error: unknown) {
       console.error('Error searching flights:', error);
+      
+      // Provide specific error messages for timeout scenarios
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const isTimeout = errorMessage.includes('timed out') || errorMessage.includes('timeout');
+      const isRateLimit = errorMessage.includes('429') || errorMessage.includes('rate limit');
+      
+      let userFriendlyMessage = `Error searching flights: ${errorMessage}`;
+      
+      if (isTimeout) {
+        userFriendlyMessage = 'Flight search request timed out. The Amadeus API may be experiencing delays. Please try again in a few moments.';
+      } else if (isRateLimit) {
+        userFriendlyMessage = 'Flight search rate limit exceeded. Please wait a moment before trying again.';
+      }
+      
       return {
         content: [
           {
             type: 'text',
-            text: `Error searching flights: ${
-              error instanceof Error ? error.message : 'Unknown error'
-            }`,
+            text: userFriendlyMessage,
           },
         ],
         isError: true,
@@ -475,9 +541,13 @@ server.tool(
         }
       }
 
-      const response = (await amadeus.analytics.itineraryPriceMetrics.get(
-        params,
-      )) as PriceAnalysisResponse;
+      const response = await makeApiCallWithRetry(
+        () => amadeus.analytics.itineraryPriceMetrics.get(params),
+        'Price analysis',
+        2, // retries
+        1000, // initial delay
+        25000 // timeout (25 seconds)
+      ) as PriceAnalysisResponse;
 
       return {
         content: [
@@ -797,9 +867,13 @@ server.tool(
         }
       }
 
-      const response = (await amadeus.shopping.flightDestinations.get(
-        params,
-      )) as FlightInspirationResponse;
+      const response = await makeApiCallWithRetry(
+        () => amadeus.shopping.flightDestinations.get(params),
+        'Flight inspiration',
+        2, // retries
+        1000, // initial delay
+        25000 // timeout (25 seconds)
+      ) as FlightInspirationResponse;
 
       // Format the response for better readability
       const formattedResults = response.data.map((destination) => ({
@@ -897,9 +971,13 @@ server.tool(
         }
       }
 
-      const response = (await amadeus.airport.directDestinations.get(
-        params,
-      )) as AirportRoutesResponse;
+      const response = await makeApiCallWithRetry(
+        () => amadeus.airport.directDestinations.get(params),
+        'Airport routes',
+        2, // retries
+        1000, // initial delay
+        25000 // timeout (25 seconds)
+      ) as AirportRoutesResponse;
 
       // Format the response for better readability
       const formattedResults = response.data.map((route) => ({
@@ -1014,9 +1092,13 @@ server.tool(
         }
       }
 
-      const response = (await amadeus.referenceData.locations.airports.get(
-        params,
-      )) as NearestAirportResponse;
+      const response = await makeApiCallWithRetry(
+        () => amadeus.referenceData.locations.airports.get(params),
+        'Nearest airports',
+        2, // retries
+        1000, // initial delay
+        25000 // timeout (25 seconds)
+      ) as NearestAirportResponse;
 
       // Format the response for better readability
       const formattedResults = response.data.map((airport) => ({
@@ -1133,9 +1215,13 @@ server.tool(
         }
       }
 
-      const response = (await amadeus.shopping.hotelOffersSearch.get(
-        params,
-      )) as HotelOfferResponse;
+      const response = await makeApiCallWithRetry(
+        () => amadeus.shopping.hotelOffersSearch.get(params),
+        'Hotel offers search',
+        2, // retries
+        1000, // initial delay
+        25000 // timeout (25 seconds)
+      ) as HotelOfferResponse;
 
       // Format the response
       const formattedResults = response.data.map((offer: HotelOffer) => {
