@@ -116,6 +116,65 @@ interface PriceAnalysisResponse {
   }>;
 }
 
+// Hotel search parameters
+interface HotelParams {
+  [key: string]: string | number | boolean | undefined;
+  hotelIds: string; // Comma-separated hotel IDs
+  adults: number;
+  children?: number;
+  checkInDate: string;
+  checkOutDate: string;
+  currencyCode?: string;
+  roomQuantity?: number;
+  priceRange?: string;
+  paymentPolicy?: string;
+}
+
+// Hotel offer response structure
+interface HotelOffer {
+  id: string;
+  checkInDate: string;
+  checkOutDate: string;
+  rateCode?: string;
+  room: {
+    type: string;
+    typeEstimated?: {
+      category: string;
+      beds: number;
+      bedType: string;
+    };
+  };
+  guests: {
+    adults: number;
+    children?: number;
+  };
+  price: {
+    currency: string;
+    total: string;
+    base?: string;
+    taxes?: Array<{
+      amount: string;
+      code: string;
+    }>;
+  };
+  policies?: {
+    paymentType: string;
+    cancellation?: {
+      description: {
+        text: string;
+      };
+    };
+  };
+  rateFamilyEstimated?: {
+    code: string;
+    type: string;
+  };
+}
+
+interface HotelOfferResponse {
+  data: HotelOffer[];
+}
+
 server.tool(
   'search-flights',
   'Search for flight offers',
@@ -985,6 +1044,132 @@ server.tool(
           {
             type: 'text',
             text: `Error finding nearest airports: ${
+              error instanceof Error ? error.message : 'Unknown error'
+            }`,
+          },
+        ],
+        isError: true,
+      };
+    }
+  },
+);
+
+/**
+ * Tool to search for hotel offers by hotel IDs
+ */
+server.tool(
+  'search-hotel-offers',
+  'Search for hotel offers by hotel IDs',
+  {
+    hotelIds: z
+      .string()
+      .describe('Comma-separated list of hotel IDs (8-character Amadeus hotel codes)'),
+    adults: z
+      .number()
+      .min(1)
+      .max(9)
+      .default(1)
+      .describe('Number of adult guests'),
+    children: z
+      .number()
+      .min(0)
+      .max(9)
+      .optional()
+      .describe('Number of children'),
+    checkInDate: z
+      .string()
+      .describe('Check-in date in YYYY-MM-DD format'),
+    checkOutDate: z
+      .string()
+      .describe('Check-out date in YYYY-MM-DD format'),
+    currencyCode: z
+      .string()
+      .length(3)
+      .default('USD')
+      .describe('Currency code for pricing'),
+    roomQuantity: z
+      .number()
+      .min(1)
+      .max(9)
+      .default(1)
+      .describe('Number of rooms requested'),
+    priceRange: z
+      .string()
+      .optional()
+      .describe('Price range filter (e.g., "1-100")'),
+    paymentPolicy: z
+      .enum(['GUARANTEE', 'DEPOSIT', 'NONE'])
+      .optional()
+      .describe('Payment policy filter'),
+  },
+  async ({
+    hotelIds,
+    adults,
+    children,
+    checkInDate,
+    checkOutDate,
+    currencyCode,
+    roomQuantity,
+    priceRange,
+    paymentPolicy,
+  }) => {
+    try {
+      const params: HotelParams = {
+        hotelIds,
+        adults,
+        children,
+        checkInDate,
+        checkOutDate,
+        currencyCode,
+        roomQuantity,
+        priceRange,
+        paymentPolicy,
+      };
+
+      // Remove undefined values
+      for (const key of Object.keys(params)) {
+        if (params[key] === undefined) {
+          delete params[key];
+        }
+      }
+
+      const response = (await amadeus.shopping.hotelOffersSearch.get(
+        params,
+      )) as HotelOfferResponse;
+
+      // Format the response
+      const formattedResults = response.data.map((offer: HotelOffer) => {
+        return {
+          offerId: offer.id,
+          checkIn: offer.checkInDate,
+          checkOut: offer.checkOutDate,
+          roomType: offer.room.type,
+          roomCategory: offer.room.typeEstimated?.category,
+          guests: `${offer.guests.adults} adult(s)${offer.guests.children ? `, ${offer.guests.children} child(ren)` : ''}`,
+          price: `${offer.price.total} ${offer.price.currency}`,
+          basePrice: offer.price.base,
+          taxes: offer.price.taxes?.map(tax => `${tax.amount} (${tax.code})`).join(', '),
+          paymentType: offer.policies?.paymentType,
+          cancellation: offer.policies?.cancellation?.description?.text,
+          rateFamily: offer.rateFamilyEstimated?.type,
+        };
+      });
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(formattedResults, null, 2),
+          },
+        ],
+      };
+    } catch (error: unknown) {
+      console.error('Error searching hotel offers:', error);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error searching hotel offers: ${
               error instanceof Error ? error.message : 'Unknown error'
             }`,
           },

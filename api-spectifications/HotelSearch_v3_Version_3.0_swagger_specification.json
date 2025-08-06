@@ -1,0 +1,573 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Amadeus Hotel Search API",
+    "description": "Hotel Search API v3 integration specification for MCP Server",
+    "version": "3.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://test.api.amadeus.com/v3",
+      "description": "Amadeus Test Environment"
+    },
+    {
+      "url": "https://api.amadeus.com/v3",
+      "description": "Amadeus Production Environment"
+    }
+  ],
+  "paths": {
+    "/shopping/hotel-offers": {
+      "get": {
+        "summary": "Hotel Offers Search",
+        "description": "Search for hotel offers by hotel IDs",
+        "parameters": [
+          {
+            "name": "hotelIds",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Comma-separated list of hotel IDs (8-character Amadeus hotel codes)"
+          },
+          {
+            "name": "adults",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9
+            },
+            "description": "Number of adult guests"
+          },
+          {
+            "name": "children",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9
+            },
+            "description": "Number of children"
+          },
+          {
+            "name": "checkInDate",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Check-in date in YYYY-MM-DD format"
+          },
+          {
+            "name": "checkOutDate",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Check-out date in YYYY-MM-DD format"
+          },
+          {
+            "name": "currencyCode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 3
+            },
+            "description": "Currency code for pricing (default: USD)"
+          },
+          {
+            "name": "roomQuantity",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9
+            },
+            "description": "Number of rooms requested"
+          },
+          {
+            "name": "priceRange",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Price range filter (e.g., '1-100')"
+          },
+          {
+            "name": "paymentPolicy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["GUARANTEE", "DEPOSIT", "NONE"]
+            },
+            "description": "Payment policy filter"
+          },
+          {
+            "name": "bestRateOnly",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Return only the best rate for each hotel"
+          },
+          {
+            "name": "includeClosed",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Include hotels that are temporarily closed"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HotelOffersResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HotelOffersResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HotelWithOffers"
+            }
+          }
+        }
+      },
+      "HotelWithOffers": {
+        "type": "object",
+        "properties": {
+          "hotel": {
+            "$ref": "#/components/schemas/Hotel"
+          },
+          "offers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HotelOffer"
+            }
+          },
+          "available": {
+            "type": "boolean"
+          }
+        }
+      },
+      "Hotel": {
+        "type": "object",
+        "properties": {
+          "hotelId": {
+            "type": "string",
+            "description": "8-character Amadeus hotel ID"
+          },
+          "name": {
+            "type": "string"
+          },
+          "rating": {
+            "type": "string"
+          },
+          "cityCode": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "hotelDistance": {
+            "$ref": "#/components/schemas/Distance"
+          },
+          "address": {
+            "$ref": "#/components/schemas/Address"
+          },
+          "contact": {
+            "$ref": "#/components/schemas/Contact"
+          },
+          "description": {
+            "$ref": "#/components/schemas/Description"
+          },
+          "amenities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "media": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Media"
+            }
+          }
+        }
+      },
+      "HotelOffer": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique offer identifier"
+          },
+          "checkInDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "checkOutDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "rateCode": {
+            "type": "string"
+          },
+          "rateFamilyEstimated": {
+            "$ref": "#/components/schemas/RateFamily"
+          },
+          "room": {
+            "$ref": "#/components/schemas/Room"
+          },
+          "guests": {
+            "$ref": "#/components/schemas/Guests"
+          },
+          "price": {
+            "$ref": "#/components/schemas/Price"
+          },
+          "policies": {
+            "$ref": "#/components/schemas/Policies"
+          },
+          "self": {
+            "type": "string",
+            "description": "Link to this specific offer"
+          }
+        }
+      },
+      "Room": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "typeEstimated": {
+            "$ref": "#/components/schemas/RoomTypeEstimated"
+          },
+          "description": {
+            "$ref": "#/components/schemas/Description"
+          }
+        }
+      },
+      "RoomTypeEstimated": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "beds": {
+            "type": "integer"
+          },
+          "bedType": {
+            "type": "string"
+          }
+        }
+      },
+      "Guests": {
+        "type": "object",
+        "properties": {
+          "adults": {
+            "type": "integer"
+          },
+          "children": {
+            "type": "integer"
+          }
+        }
+      },
+      "Price": {
+        "type": "object",
+        "properties": {
+          "currency": {
+            "type": "string"
+          },
+          "total": {
+            "type": "string"
+          },
+          "base": {
+            "type": "string"
+          },
+          "taxes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Tax"
+            }
+          },
+          "markups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Markup"
+            }
+          }
+        }
+      },
+      "Tax": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "percentage": {
+            "type": "string"
+          },
+          "included": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": "string"
+          },
+          "pricingFrequency": {
+            "type": "string"
+          },
+          "pricingMode": {
+            "type": "string"
+          }
+        }
+      },
+      "Markup": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "string"
+          }
+        }
+      },
+      "Policies": {
+        "type": "object",
+        "properties": {
+          "paymentType": {
+            "type": "string",
+            "enum": ["GUARANTEE", "DEPOSIT", "HOLDTIME"]
+          },
+          "cancellation": {
+            "$ref": "#/components/schemas/CancellationPolicy"
+          },
+          "guarantee": {
+            "$ref": "#/components/schemas/GuaranteePolicy"
+          },
+          "deposit": {
+            "$ref": "#/components/schemas/DepositPolicy"
+          },
+          "prepay": {
+            "$ref": "#/components/schemas/PrepayPolicy"
+          },
+          "holdTime": {
+            "$ref": "#/components/schemas/HoldPolicy"
+          }
+        }
+      },
+      "CancellationPolicy": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "string"
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "$ref": "#/components/schemas/Description"
+          },
+          "type": {
+            "type": "string"
+          }
+        }
+      },
+      "GuaranteePolicy": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "$ref": "#/components/schemas/Description"
+          },
+          "acceptedPayments": {
+            "$ref": "#/components/schemas/AcceptedPayments"
+          }
+        }
+      },
+      "DepositPolicy": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "string"
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "$ref": "#/components/schemas/Description"
+          },
+          "acceptedPayments": {
+            "$ref": "#/components/schemas/AcceptedPayments"
+          }
+        }
+      },
+      "PrepayPolicy": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "string"
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "$ref": "#/components/schemas/Description"
+          },
+          "acceptedPayments": {
+            "$ref": "#/components/schemas/AcceptedPayments"
+          }
+        }
+      },
+      "HoldPolicy": {
+        "type": "object",
+        "properties": {
+          "deadline": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AcceptedPayments": {
+        "type": "object",
+        "properties": {
+          "creditCards": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "methods": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "RateFamily": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        }
+      },
+      "Distance": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "number"
+          },
+          "unit": {
+            "type": "string"
+          }
+        }
+      },
+      "Address": {
+        "type": "object",
+        "properties": {
+          "lines": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "postalCode": {
+            "type": "string"
+          },
+          "cityName": {
+            "type": "string"
+          },
+          "countryCode": {
+            "type": "string"
+          },
+          "stateCode": {
+            "type": "string"
+          }
+        }
+      },
+      "Contact": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "type": "string"
+          },
+          "fax": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          }
+        }
+      },
+      "Description": {
+        "type": "object",
+        "properties": {
+          "lang": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
+        }
+      },
+      "Media": {
+        "type": "object",
+        "properties": {
+          "uri": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

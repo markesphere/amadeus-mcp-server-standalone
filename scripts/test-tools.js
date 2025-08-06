@@ -72,6 +72,72 @@ const testCases = {
       currencyCode: 'USD',
       maxResults: 5
     }
+  },
+  '6': {
+    name: 'Search hotels by location (Paris)',
+    tool: 'search-hotels-by-location',
+    params: {
+      cityCode: 'PAR',
+      radius: 20,
+      radiusUnit: 'KM',
+      hotelSource: 'ALL'
+    }
+  },
+  '7': {
+    name: 'Search hotel offers (Paris)',
+    tool: 'search-hotel-offers',
+    params: {
+      hotelIds: 'RTPAR001,RTPAR002',
+      adults: 2,
+      checkInDate: getFutureDate(30),
+      checkOutDate: getFutureDate(33),
+      currencyCode: 'EUR',
+      roomQuantity: 1
+    }
+  },
+  '8': {
+    name: 'Search hotels by coordinates (Manhattan)',
+    tool: 'search-hotels-by-location',
+    params: {
+      latitude: 40.7589,
+      longitude: -73.9851,
+      radius: 5,
+      radiusUnit: 'KM'
+    }
+  },
+  '9': {
+    name: 'Multi-room hotel search (Barcelona)',
+    tool: 'search-hotel-offers',
+    params: {
+      hotelIds: 'RTBCN001,RTBCN002',
+      adults: 4,
+      children: 2,
+      checkInDate: getFutureDate(45),
+      checkOutDate: getFutureDate(47),
+      currencyCode: 'EUR',
+      roomQuantity: 2
+    }
+  },
+  '6': {
+    name: 'Search hotels by location (Paris)',
+    tool: 'search-hotels-by-location',
+    params: {
+      cityCode: 'PAR',
+      radius: 20,
+      radiusUnit: 'KM'
+    }
+  },
+  '7': {
+    name: 'Search hotel offers (Paris hotels)',
+    tool: 'search-hotel-offers',
+    params: {
+      hotelIds: 'RTPAR001,RTPAR002', // Example hotel IDs
+      adults: 2,
+      checkInDate: getFutureDate(30),
+      checkOutDate: getFutureDate(33),
+      currencyCode: 'EUR',
+      roomQuantity: 1
+    }
   }
 };
 
@@ -143,4 +209,4 @@ function askForInput() {
 console.log('Amadeus MCP Server Tool Tester');
 console.log('=============================');
 displayMenu();
-askForInput(); 
+askForInput();

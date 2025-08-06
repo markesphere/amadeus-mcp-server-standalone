@@ -24,6 +24,7 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:integration": "jest __tests__/integration",
+    "test:hotels": "node scripts/test-hotels.js",
     "test:inspector": "node __tests__/mcp-inspector.test.js",
     "mcp:inspect": "npx @modelcontextprotocol/inspector node dist/cli.js",
     "mcp:test": "node scripts/test-tools.js",

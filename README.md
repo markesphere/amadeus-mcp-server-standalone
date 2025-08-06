@@ -9,6 +9,8 @@ This is a Model Context Protocol (MCP) server that connects to the Amadeus API t
 - **Price Analysis**: Get price metrics for routes to determine if current prices are high or low
 - **Cheapest Dates**: Find the most economical dates to travel
 - **Flight Details**: Get detailed information about specific flight offers
+- **Hotel Search**: Find hotels by location, city, or coordinates
+- **Hotel Offers**: Get hotel availability and pricing information with detailed room options
 
 ## Prompts
 
@@ -18,6 +20,8 @@ The server provides several pre-configured prompts for common travel planning sc
 2. **Find Best Deals** (`find-best-deals`): Find the best flight deals for a specific route and date
 3. **Plan Multi-City Trip** (`plan-multi-city-trip`): Plan a complete multi-city itinerary with optimal routing
 4. **Find Cheapest Travel Dates** (`find-cheapest-travel-dates`): Identify the most economical dates to travel
+
+*Note: Hotel-related prompts will be added once the hotel search tools are fully implemented.*
 
 ## Setup
 
@@ -82,6 +86,11 @@ Run integration tests (requires Amadeus API credentials):
 npm run test:integration
 ```
 
+Run hotel-specific integration tests:
+```
+npm run test:hotels
+```
+
 Run linting:
 ```
 npm run lint
@@ -117,6 +126,8 @@ The integration tests are located in `__tests__/integration` and validate the fo
 - **Airport Search**: Searching for airports by code or keyword
 - **Flight Search**: Finding flights for one-way and round-trip journeys
 - **Price Analysis**: Getting price metrics for specific routes
+- **Hotel Search**: Finding hotels by city, coordinates, and location
+- **Hotel Offers**: Getting hotel availability, pricing, and booking options
 
 ### Best Practices for Integration Testing
 
@@ -127,11 +138,27 @@ The integration tests are located in `__tests__/integration` and validate the fo
 3. **Test in Isolation**: When developing a new feature, you can run specific test files:
    ```
    npx jest __tests__/integration/flight-search.test.js
+   npx jest __tests__/integration/hotel-search.test.js
+   npx jest __tests__/integration/hotel-booking.test.js
    ```
 
 4. **Longer Timeouts**: Integration tests use longer timeouts (60 seconds) to accommodate network latency and retries.
 
 5. **Mock for CI/CD**: For continuous integration pipelines where real API access isn't available, use `__tests__/amadeus-mock.test.js` which runs without actual API calls.
+
+### Hotel Integration Tests
+
+The hotel integration tests in `__tests__/integration/` validate hotel search and booking functionality:
+
+- **`hotel-search.test.js`**: Tests core hotel search by city, coordinates, and location with offer retrieval
+- **`hotel-booking.test.js`**: Tests advanced booking scenarios including multi-room bookings and price analysis
+
+These tests include comprehensive scenarios for:
+- Finding hotels by city code (e.g., Paris, London)
+- Searching hotels by geographic coordinates 
+- Retrieving hotel offers with availability and pricing
+- Testing multi-room group bookings
+- Validating hotel details and rate policies
 
 ## Integration
 
@@ -156,12 +183,22 @@ Get detailed information about a specific flight offer.
 ### `find-cheapest-dates`
 Find the cheapest dates to fly for a given route.
 
+### `search-hotels-by-location`
+Search for hotels by city, coordinates, or location keywords.
+
+### `search-hotel-offers`
+Get hotel availability and pricing information with detailed room options and booking policies.
+
+*Note: Hotel tools are currently in development. Integration tests are complete and ready for implementation.*
+
 ## Resources
 
 The server provides schema resources for:
 
 - Flight offers (`schema://flight-offers`)
 - Airports (`schema://airports`)
+- Hotels (`schema://hotels`)
+- Hotel offers (`schema://hotel-offers`)
 
 ## License
 
