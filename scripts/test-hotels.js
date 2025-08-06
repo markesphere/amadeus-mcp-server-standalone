@@ -7,8 +7,8 @@
  * detailed output for debugging hotel API integration issues.
  */
 
-const { spawn } = require('node:child_process');
-const path = require('node:path');
+import { spawn } from 'node:child_process';
+import path from 'node:path';
 
 console.log('🏨 Amadeus Hotel API Integration Test Runner');
 console.log('==========================================');

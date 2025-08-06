@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-const { exec } = require('node:child_process');
-const { promisify } = require('node:util');
+import { exec } from 'node:child_process';
+import { promisify } from 'node:util';
 const execAsync = promisify(exec);
 
 // Common ports that might be used by the MCP server

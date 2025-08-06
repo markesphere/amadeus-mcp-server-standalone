@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-const { spawn } = require('node:child_process');
-const readline = require('node:readline');
+import { spawn } from 'node:child_process';
+import readline from 'node:readline';
 
 // Helper function to get a future date string
 const getFutureDate = (daysFromNow) => {
